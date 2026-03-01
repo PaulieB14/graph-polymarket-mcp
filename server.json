@@ -1,0 +1,29 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.PaulieB14/graph-polymarket-mcp",
+  "description": "MCP server for querying Polymarket data via The Graph subgraphs",
+  "repository": {
+    "url": "https://github.com/PaulieB14/graph-polymarket-mcp",
+    "source": "github"
+  },
+  "version": "1.1.4",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "graph-polymarket-mcp",
+      "version": "1.1.4",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "API key for The Graph network (optional, for higher rate limits)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "GRAPH_API_KEY"
+        }
+      ]
+    }
+  ]
+}
