@@ -334,6 +334,73 @@ server.tool(
 );
 
 // ---------------------------------------------------------------------------
+// MCP Prompts - guided workflows for agents
+// ---------------------------------------------------------------------------
+server.prompt(
+  "analyze_trader",
+  "Analyze a Polymarket trader's full profile: P&L, positions, and recent activity",
+  { address: z.string().describe("Ethereum address of the trader") },
+  ({ address }) => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Analyze the Polymarket trader at address ${address}. Follow these steps:
+1. Use get_account_pnl to get their P&L metrics and performance stats
+2. Use get_user_positions to see their current open positions
+3. Use get_orderbook_trades with the maker parameter to see their recent trades
+4. Use get_recent_activity with the account parameter to check splits/merges/redemptions
+5. Summarize: overall profitability, win rate, active positions, and trading patterns`,
+        },
+      },
+    ],
+  })
+);
+
+server.prompt(
+  "market_overview",
+  "Get a comprehensive overview of Polymarket platform activity",
+  {},
+  () => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Give me a comprehensive Polymarket overview. Follow these steps:
+1. Use get_global_stats to get platform-wide metrics (volume, traders, markets)
+2. Use get_market_data with first=20 to see recent market conditions
+3. Use get_orderbook_trades with first=20 to see the latest trading activity
+4. Summarize: total volume, number of active markets, recent trading patterns, and key metrics`,
+        },
+      },
+    ],
+  })
+);
+
+server.prompt(
+  "explore_subgraph",
+  "Explore a specific Polymarket subgraph's schema and sample data",
+  { subgraph: z.string().describe("Subgraph id: main, beefy_pnl, slimmed_pnl, activity, or orderbook") },
+  ({ subgraph }) => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Help me explore the "${subgraph}" Polymarket subgraph. Follow these steps:
+1. Use list_subgraphs to show me what this subgraph contains
+2. Use get_subgraph_schema to get the full schema with all entities and fields
+3. Identify the most useful entities and write a sample query_subgraph call to fetch interesting data
+4. Explain what kinds of questions this subgraph can answer`,
+        },
+      },
+    ],
+  })
+);
+
+// ---------------------------------------------------------------------------
 // Start server
 // ---------------------------------------------------------------------------
 async function main() {

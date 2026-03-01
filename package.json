@@ -1,6 +1,6 @@
 {
   "name": "graph-polymarket-mcp",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "MCP server for querying Polymarket data via The Graph subgraphs",
   "type": "module",
   "bin": {
@@ -24,8 +24,16 @@
     "ai",
     "claude"
   ],
-  "author": "",
+  "author": "PaulieB14",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulieB14/graph-polymarket-mcp.git"
+  },
+  "homepage": "https://github.com/PaulieB14/graph-polymarket-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/PaulieB14/graph-polymarket-mcp/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "zod": "^3.24.0"
