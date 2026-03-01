@@ -10,7 +10,7 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
     name: "Main",
     ipfsHash: "QmdyCguLEisTtQFveEkvMhTH7UzjyhnrF9kpvhYeG4QX8a",
     description:
-      "Complete Polymarket ecosystem data including markets, conditions, FPMMs, trading, and liquidity provision.",
+      "Core Polymarket subgraph with markets, conditions, FPMMs, and liquidity data. Best for: market discovery, condition resolution status, FPMM pool data, and basic trading activity. Use this for general market queries.",
     keyEntities: [
       "Global",
       "Account",
@@ -26,51 +26,49 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
     name: "Beefy Profit and Loss",
     ipfsHash: "QmbHwcGkumWdyTK2jYWXV3vX4WyinftEGbuwi7hDkhPWqG",
     description:
-      "Comprehensive P&L tracking with performance analytics including win rate, profit factor, max drawdown, and daily stats.",
+      "The most comprehensive Polymarket analytics subgraph. UNIQUE FEATURES not available elsewhere: (1) Hedge fund-grade account metrics — winRate, profitFactor, maxDrawdown computed on-chain per trader. (2) Per-position P&L with realizedPnl, unrealizedPnl, cost basis (valueBought/valueSold). (3) DailyStats time-series — daily volume, fees, traders, new/resolved markets for trend analysis. (4) Market-level analytics — currentPrice, numBuyers, numSellers. Best for: trader performance analysis, portfolio analytics, P&L tracking, and historical trend data.",
     keyEntities: [
-      "Global",
-      "Account",
-      "Condition",
-      "Market",
-      "MarketPosition",
+      "Account (winRate, profitFactor, maxDrawdown, numWinning/LosingPositions)",
+      "MarketPosition (realizedPnl, unrealizedPnl, valueBought, valueSold)",
+      "DailyStats (daily volume, fees, traders, market counts)",
+      "Market (currentPrice, numBuyers, numSellers)",
       "MarketProfit",
       "Transaction",
-      "DailyStats",
+      "TokenPosition",
+      "UserStats",
     ],
   },
   slimmed_pnl: {
     name: "Slimmed P&L",
     ipfsHash: "QmZAYiMeZiWC7ZjdWepek7hy1jbcW3ngimBF9ibTiTtwQU",
     description:
-      "Minimal schema focused on essential user position data with buy/sell amounts and realized P&L.",
-    keyEntities: ["UserPosition", "NegRiskEvent", "Condition", "FPMM"],
+      "Lightweight position tracker. Stores user token holdings with amount, avgPrice, realizedPnl, and totalBought. Best for: quick position lookups when you just need current holdings without full analytics. Faster queries than Beefy P&L for simple position checks.",
+    keyEntities: ["UserPosition (amount, avgPrice, realizedPnl, totalBought)", "NegRiskEvent", "Condition", "FPMM"],
   },
   activity: {
     name: "Activity",
     ipfsHash: "Qmf3qPUsfQ8et6E3QNBmuXXKqUJi91mo5zbsaTkQrSnMAP",
     description:
-      "Lightweight activity and event logging for position management operations (splits, merges, redemptions).",
+      "Event log for position management operations. Tracks splits (minting outcome tokens), merges (combining tokens back to collateral), and redemptions (claiming payouts from resolved markets). Best for: monitoring position lifecycle events, tracking when users enter/exit markets, and auditing collateral flows.",
     keyEntities: [
-      "Split",
-      "Merge",
-      "Redemption",
+      "Split (stakeholder, condition, amount, timestamp)",
+      "Merge (stakeholder, condition, amount, timestamp)",
+      "Redemption (redeemer, condition, payout, indexSets)",
       "NegRiskConversion",
       "NegRiskEvent",
-      "Condition",
     ],
   },
   orderbook: {
     name: "Orderbook",
     ipfsHash: "QmVGA9vvNZtEquVzDpw8wnTFDxVjB6mavTRMTrKuUBhi4t",
     description:
-      "Orderbook-specific trading data with enhanced analytics, order fills, and per-market/per-account statistics.",
+      "Detailed orderbook trading data. Every order fill with maker/taker, price, side, fee, and asset IDs. Best for: analyzing trading patterns, tracking specific maker/taker activity, order flow analysis, and per-market trade statistics. Use this when you need raw trade-level data.",
     keyEntities: [
-      "Global",
-      "Account",
-      "MarketData",
-      "OrderFilledEvent",
+      "OrderFilledEvent (maker, taker, price, side, fee, amounts)",
       "OrdersMatchedEvent",
-      "Orderbook",
+      "Orderbook (per-token trade stats)",
+      "Global (platform-wide trade counts)",
+      "Account (per-trader volume and activity)",
     ],
   },
 };
