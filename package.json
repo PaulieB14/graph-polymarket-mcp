@@ -1,6 +1,6 @@
 {
   "name": "graph-polymarket-mcp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "MCP server for querying Polymarket data via The Graph subgraphs",
   "type": "module",
   "bin": {

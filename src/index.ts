@@ -154,23 +154,21 @@ server.tool(
       const query = `{
         account(id: "${account.toLowerCase()}") {
           id
-          totalTrades
-          totalBuyAmount
-          totalSellAmount
-          totalFees
-          totalProfit
-          realizedProfit
-          unrealizedProfit
+          creationTimestamp
+          lastTradedTimestamp
+          isActive
+          numTrades
+          collateralVolume
+          totalRealizedPnl
+          totalUnrealizedPnl
+          totalFeesPaid
           winRate
           profitFactor
           maxDrawdown
-          positions {
-            id
-            market { id }
-            realizedPnl
-            unrealizedPnl
-            netQuantity
-          }
+          numWinningPositions
+          numLosingPositions
+          totalProfitsSum
+          totalLossesSum
         }
       }`;
       const data = await querySubgraph(SUBGRAPHS.beefy_pnl.ipfsHash, query);
@@ -199,10 +197,10 @@ server.tool(
           id
           user
           tokenId
-          buyAmount
-          sellAmount
+          amount
+          avgPrice
           realizedPnl
-          netQuantity
+          totalBought
         }
       }`;
       const data = await querySubgraph(SUBGRAPHS.slimmed_pnl.ipfsHash, query);
@@ -250,7 +248,8 @@ server.tool(
         redemptions(first: ${first}, orderBy: timestamp, orderDirection: desc${redeemerWhere}) {
           id
           redeemer
-          amount
+          payout
+          indexSets
           timestamp
         }
       }`;
@@ -319,10 +318,17 @@ server.tool(
           numOpenConditions
           numClosedConditions
           numTraders
-          numTrades
-          tradeVolume
-          scaledTradeVolume
-          totalFees
+          tradesQuantity
+          buysQuantity
+          sellsQuantity
+          collateralVolume
+          scaledCollateralVolume
+          collateralBuyVolume
+          scaledCollateralBuyVolume
+          collateralSellVolume
+          scaledCollateralSellVolume
+          collateralFees
+          scaledCollateralFees
         }
       }`;
       const data = await querySubgraph(SUBGRAPHS.main.ipfsHash, query);
