@@ -1,8 +1,13 @@
 # graph-polymarket-mcp
 
+[![npm version](https://img.shields.io/npm/v/graph-polymarket-mcp)](https://www.npmjs.com/package/graph-polymarket-mcp)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-published-blue)](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.PaulieB14/graph-polymarket-mcp)
+
 MCP server for querying [Polymarket](https://polymarket.com/) prediction market data via [The Graph](https://thegraph.com/) subgraphs.
 
 Exposes 9 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, and orderbook trades.
+
+> Published to the [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.PaulieB14/graph-polymarket-mcp) as `io.github.PaulieB14/graph-polymarket-mcp`
 
 ## Prerequisites
 
