@@ -1,10 +1,10 @@
 {
   "name": "graph-polymarket-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for querying Polymarket data via The Graph subgraphs",
   "type": "module",
   "bin": {
-    "graph-polymarket-mcp": "./build/index.js"
+    "graph-polymarket-mcp": "build/index.js"
   },
   "main": "./build/index.js",
   "scripts": {

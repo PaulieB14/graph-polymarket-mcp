@@ -6,7 +6,12 @@ Exposes 9 tools that AI agents (Claude, Cursor, etc.) can use to query market da
 
 ## Prerequisites
 
-You need a Graph API key. Get one at: https://thegraph.com/studio/apikeys/
+You need a **free** Graph API key (takes ~2 minutes):
+
+1. Go to [The Graph Studio](https://thegraph.com/studio/)
+2. Connect your wallet (MetaMask, WalletConnect, etc.)
+3. Click **"API Keys"** in the sidebar and create one
+4. Free tier includes 100,000 queries/month
 
 ## Installation
 
@@ -96,7 +101,7 @@ Once connected, an AI agent can:
 ## Development
 
 ```bash
-git clone https://github.com/your-username/graph-polymarket-mcp.git
+git clone https://github.com/PaulieB14/graph-polymarket-mcp.git
 cd graph-polymarket-mcp
 npm install
 npm run build
