@@ -22,7 +22,7 @@ export async function querySubgraph(
     );
   }
 
-  const url = `https://gateway.thegraph.com/api/${apiKey}/subgraphs/id/${ipfsHash}`;
+  const url = `https://gateway.thegraph.com/api/${apiKey}/deployments/id/${ipfsHash}`;
 
   const body: Record<string, unknown> = { query };
   if (variables && Object.keys(variables).length > 0) {
