@@ -1,8 +1,16 @@
+<div align="center">
+
 # graph-polymarket-mcp
 
 [![npm version](https://img.shields.io/npm/v/graph-polymarket-mcp)](https://www.npmjs.com/package/graph-polymarket-mcp)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-published-blue)](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.PaulieB14/graph-polymarket-mcp)
 [![smithery badge](https://smithery.ai/badge/paulieb14/graph-polymarket-mcp)](https://smithery.ai/servers/paulieb14/graph-polymarket-mcp)
+
+<a href="https://glama.ai/mcp/servers/@PaulieB14/graph-polymarket-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@PaulieB14/graph-polymarket-mcp/badge" />
+</a>
+
+</div>
 
 MCP server for querying [Polymarket](https://polymarket.com/) prediction market data via [The Graph](https://thegraph.com/) subgraphs.
 
