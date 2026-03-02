@@ -8,7 +8,7 @@ import { SUBGRAPHS, SUBGRAPH_NAMES } from "./subgraphs.js";
 
 const server = new McpServer({
   name: "graph-polymarket-mcp",
-  version: "1.2.2",
+  version: "1.2.3",
 });
 
 // Helper to format tool responses
