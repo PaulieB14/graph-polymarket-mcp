@@ -2,12 +2,14 @@
 
 [![npm version](https://img.shields.io/npm/v/graph-polymarket-mcp)](https://www.npmjs.com/package/graph-polymarket-mcp)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-published-blue)](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.PaulieB14/graph-polymarket-mcp)
-[![Glama](https://glama.ai/mcp/servers/@PaulieB14/graph-polymarket-mcp/badge)](https://glama.ai/mcp/servers/@PaulieB14/graph-polymarket-mcp)
+<a href="https://glama.ai/mcp/servers/@PaulieB14/graph-polymarket-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@PaulieB14/graph-polymarket-mcp/badge" />
+</a>
 [![smithery badge](https://smithery.ai/badge/paulieb14/graph-polymarket-mcp)](https://smithery.ai/servers/paulieb14/graph-polymarket-mcp)
 
 MCP server for querying [Polymarket](https://polymarket.com/) prediction market data via [The Graph](https://thegraph.com/) subgraphs.
 
-Exposes 9 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, and orderbook trades.
+Exposes 12 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, and orderbook trades.
 
 > Published to the [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.PaulieB14/graph-polymarket-mcp) as `io.github.PaulieB14/graph-polymarket-mcp`
 
@@ -78,12 +80,15 @@ Use the stdio transport with `npx graph-polymarket-mcp` as the command, passing 
 
 | Tool | Description | Subgraph |
 |------|-------------|----------|
-| `get_market_data` | Get market/condition data with outcomes and volumes | Main |
-| `get_account_pnl` | Get a trader's P&L and performance metrics | Beefy P&L |
-| `get_user_positions` | Get a user's current positions | Slimmed P&L |
+| `get_market_data` | Get market/condition data with outcomes and resolution status | Main |
+| `get_global_stats` | Get platform stats: market counts + real volume/fees/trades | Main + Orderbook |
+| `get_account_pnl` | Get a trader's P&L and performance metrics (winRate, profitFactor, maxDrawdown) | Beefy P&L |
+| `get_top_traders` | Leaderboard of top traders ranked by PnL, winRate, volume, or profitFactor | Beefy P&L |
+| `get_daily_stats` | Daily volume, fees, trader counts, and market activity (1–90 days) | Beefy P&L |
+| `get_market_positions` | Top holders for a specific outcome token with their P&L | Beefy P&L |
+| `get_user_positions` | Get a user's current token positions | Slimmed P&L |
 | `get_recent_activity` | Get recent splits, merges, and redemptions | Activity |
-| `get_orderbook_trades` | Get recent order fills | Orderbook |
-| `get_global_stats` | Get aggregate platform statistics | Main |
+| `get_orderbook_trades` | Get recent order fills with maker/taker filtering | Orderbook |
 
 ## Subgraphs
 
