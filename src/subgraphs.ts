@@ -10,27 +10,24 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
     name: "Main",
     ipfsHash: "QmdyCguLEisTtQFveEkvMhTH7UzjyhnrF9kpvhYeG4QX8a",
     description:
-      "Core Polymarket subgraph with markets, conditions, FPMMs, and liquidity data. Best for: market discovery, condition resolution status, FPMM pool data, and basic trading activity. Use this for general market queries.",
+      "Core Polymarket subgraph with markets, conditions, and trader counts. Best for: market discovery, condition resolution status, and counting open/closed markets. NOTE: volume/fee fields in Global are zeroed out — use the orderbook subgraph for accurate volume data.",
     keyEntities: [
-      "Global",
+      "Global (numConditions, numOpenConditions, numClosedConditions, numTraders)",
+      "Condition (oracle, questionId, outcomeSlotCount, resolutionTimestamp, payoutNumerators)",
       "Account",
-      "Condition",
-      "FixedProductMarketMaker",
       "MarketData",
-      "MarketPosition",
       "Transaction",
-      "OrderFilledEvent",
     ],
   },
   beefy_pnl: {
     name: "Beefy Profit and Loss",
     ipfsHash: "QmbHwcGkumWdyTK2jYWXV3vX4WyinftEGbuwi7hDkhPWqG",
     description:
-      "The most comprehensive Polymarket analytics subgraph. UNIQUE FEATURES not available elsewhere: (1) Hedge fund-grade account metrics — winRate, profitFactor, maxDrawdown computed on-chain per trader. (2) Per-position P&L with realizedPnl, unrealizedPnl, cost basis (valueBought/valueSold). (3) DailyStats time-series — daily volume, fees, traders, new/resolved markets for trend analysis. (4) Market-level analytics — currentPrice, numBuyers, numSellers. Best for: trader performance analysis, portfolio analytics, P&L tracking, and historical trend data.",
+      "The most comprehensive Polymarket analytics subgraph. UNIQUE FEATURES not available elsewhere: (1) Hedge fund-grade account metrics — winRate, profitFactor, maxDrawdown computed on-chain per trader. (2) Per-position P&L with realizedPnl, unrealizedPnl, cost basis (valueBought/valueSold). (3) Daily time-series — query as dailyStats_collection (NOT dailyStats) for daily volume, fees, numTraders, numNewMarkets, numResolvedMarkets. (4) Market-level analytics — currentPrice, numBuyers, numSellers. Best for: trader performance analysis, portfolio analytics, P&L tracking, and historical trend data.",
     keyEntities: [
       "Account (winRate, profitFactor, maxDrawdown, numWinning/LosingPositions)",
       "MarketPosition (realizedPnl, unrealizedPnl, valueBought, valueSold)",
-      "DailyStats (daily volume, fees, traders, market counts)",
+      "dailyStats_collection (date, volume, fees, numTraders, numNewMarkets, numResolvedMarkets) — use _collection suffix for list queries",
       "Market (currentPrice, numBuyers, numSellers)",
       "MarketProfit",
       "Transaction",
@@ -42,7 +39,7 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
     name: "Slimmed P&L",
     ipfsHash: "QmZAYiMeZiWC7ZjdWepek7hy1jbcW3ngimBF9ibTiTtwQU",
     description:
-      "Lightweight position tracker. Stores user token holdings with amount, avgPrice, realizedPnl, and totalBought. Best for: quick position lookups when you just need current holdings without full analytics. Faster queries than Beefy P&L for simple position checks.",
+      "Lightweight position tracker. Stores user token holdings with amount, avgPrice, realizedPnl, and totalBought. Best for: quick position lookups when you just need current holdings without full analytics. NOTE: indexers on this subgraph can lag; if queries fail with 'too far behind' errors, use the beefy_pnl subgraph instead.",
     keyEntities: ["UserPosition (amount, avgPrice, realizedPnl, totalBought)", "NegRiskEvent", "Condition", "FPMM"],
   },
   activity: {
@@ -62,7 +59,7 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
     name: "Orderbook",
     ipfsHash: "QmVGA9vvNZtEquVzDpw8wnTFDxVjB6mavTRMTrKuUBhi4t",
     description:
-      "Detailed orderbook trading data. Every order fill with maker/taker, price, side, fee, and asset IDs. Best for: analyzing trading patterns, tracking specific maker/taker activity, order flow analysis, and per-market trade statistics. Use this when you need raw trade-level data.",
+      "Detailed orderbook trading data and authoritative platform-wide volume. Every order fill with maker/taker, price, side, fee, and asset IDs. IMPORTANT: Use ordersMatchedGlobals for accurate total volume ($72B+), trade counts, and fees — the main subgraph Global entity has zeroed volume fields. Best for: analyzing trading patterns, tracking specific maker/taker activity, order flow analysis, per-market trade statistics, and platform volume metrics.",
     keyEntities: [
       "OrderFilledEvent (maker, taker, price, side, fee, amounts)",
       "OrdersMatchedEvent",
