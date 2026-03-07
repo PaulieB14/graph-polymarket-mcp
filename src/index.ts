@@ -8,7 +8,7 @@ import { SUBGRAPHS, SUBGRAPH_NAMES } from "./subgraphs.js";
 
 const server = new McpServer({
   name: "graph-polymarket-mcp",
-  version: "1.2.3",
+  version: "1.3.0",
 });
 
 // Helper to format tool responses
@@ -491,6 +491,113 @@ server.registerTool(
 );
 
 // ---------------------------------------------------------------------------
+// Tool 13: get_market_open_interest
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_market_open_interest",
+  {
+    description:
+      "Get the top Polymarket markets ranked by open interest (USDC locked in outstanding positions). This data is unique to the Open Interest subgraph — no other Polymarket subgraph tracks OI.",
+    inputSchema: {
+      first: z.number().min(1).max(100).default(10).describe("Number of markets to return (1-100)"),
+      orderBy: z
+        .enum(["amount", "splitCount", "mergeCount", "lastUpdatedTimestamp"])
+        .default("amount")
+        .describe("Field to rank markets by"),
+      orderDirection: z.enum(["asc", "desc"]).default("desc").describe("Sort direction"),
+    },
+  },
+  async ({ first, orderBy, orderDirection }) => {
+    try {
+      const query = `{
+        marketOpenInterests(first: ${first}, orderBy: ${orderBy}, orderDirection: ${orderDirection}) {
+          id
+          conditionId
+          amount
+          amountRaw
+          splitCount
+          mergeCount
+          redemptionCount
+          createdAtTimestamp
+          lastUpdatedTimestamp
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.open_interest.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool 14: get_oi_history
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_oi_history",
+  {
+    description:
+      "Get hourly open interest snapshots for a specific Polymarket market. Use this to chart OI trends over time. The conditionId can be obtained from get_market_open_interest or the main subgraph.",
+    inputSchema: {
+      conditionId: z.string().describe("The conditionId (hex string) of the market"),
+      first: z.number().min(1).max(1000).default(168).describe("Number of hourly snapshots to return (default 168 = 1 week)"),
+      orderDirection: z.enum(["asc", "desc"]).default("desc").describe("Sort direction by timestamp"),
+    },
+  },
+  async ({ conditionId, first, orderDirection }) => {
+    try {
+      const query = `{
+        oisnapshots(
+          first: ${first},
+          orderBy: timestamp,
+          orderDirection: ${orderDirection},
+          where: { market: "${conditionId.toLowerCase()}" }
+        ) {
+          id
+          amount
+          amountRaw
+          blockNumber
+          timestamp
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.open_interest.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool 15: get_global_open_interest
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_global_open_interest",
+  {
+    description:
+      "Get the total open interest across all Polymarket markets — the aggregate USDC locked in outstanding positions platform-wide.",
+  },
+  async () => {
+    try {
+      const query = `{
+        globalOpenInterests(first: 1) {
+          id
+          amount
+          amountRaw
+          marketCount
+          lastUpdatedBlock
+          lastUpdatedTimestamp
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.open_interest.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
 // MCP Prompts - guided workflows for agents
 // ---------------------------------------------------------------------------
 server.registerPrompt(
@@ -546,7 +653,7 @@ server.registerPrompt(
   {
     description: "Explore a specific Polymarket subgraph's schema and sample data",
     argsSchema: {
-      subgraph: z.string().describe("Subgraph id: main, beefy_pnl, slimmed_pnl, activity, or orderbook"),
+      subgraph: z.string().describe("Subgraph id: main, beefy_pnl, slimmed_pnl, activity, orderbook, or open_interest"),
     },
   },
   ({ subgraph }) => ({
@@ -567,7 +674,10 @@ Working example queries by subgraph:
 - beefy_pnl daily: { dailyStats_collection(first: 7, orderBy: date, orderDirection: desc) { id date volume fees numTraders } }
 - orderbook: { ordersMatchedGlobals(first: 1) { tradesQuantity collateralVolume totalFees averageTradeSize } }
 - orderbook fills: { orderFilledEvents(first: 5, orderBy: timestamp, orderDirection: desc) { maker taker price side fee timestamp } }
-- activity: { splits(first: 5, orderBy: timestamp, orderDirection: desc) { stakeholder amount timestamp } }`,
+- activity: { splits(first: 5, orderBy: timestamp, orderDirection: desc) { stakeholder amount timestamp } }
+- open_interest: { marketOpenInterests(first: 5, orderBy: amount, orderDirection: desc) { id amount splitCount mergeCount lastUpdatedTimestamp } }
+- open_interest global: { globalOpenInterests(first: 1) { amount marketCount lastUpdatedTimestamp } }
+- open_interest history: { oisnapshots(first: 24, orderBy: timestamp, orderDirection: desc, where: { market: "0x..." }) { amount timestamp } }`,
         },
       },
     ],
@@ -594,6 +704,30 @@ server.registerPrompt(
 3. Use get_global_stats to compare daily averages against all-time totals
 4. Use get_top_traders with orderBy=collateralVolume to see the most active traders driving volume
 5. Summarize key trends, anomalies, and what they suggest about platform health`,
+        },
+      },
+    ],
+  })
+);
+
+server.registerPrompt(
+  "oi_analysis",
+  {
+    description: "Analyze Polymarket open interest — which markets have the most capital locked in and how OI is trending",
+    argsSchema: {},
+  },
+  () => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Analyze Polymarket open interest. Follow these steps:
+1. Use get_global_open_interest to get total platform OI and market count
+2. Use get_market_open_interest with first=10 to find the top 10 markets by OI
+3. For the top 2-3 markets, use get_oi_history with their conditionIds to see how OI has trended
+4. Use get_market_data from the main subgraph to cross-reference conditionIds with market details (oracle, questionId, resolution status)
+5. Summarize: total platform OI, top markets by capital locked, OI trends (growing/declining), and any notable patterns`,
         },
       },
     ],

@@ -12,7 +12,7 @@
 
 **MCP server for querying [Polymarket](https://polymarket.com/) prediction market data via [The Graph](https://thegraph.com/) subgraphs.**
 
-Exposes 12 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, and orderbook trades.
+Exposes 15 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, orderbook trades, and open interest.
 
 </div>
 
@@ -94,6 +94,9 @@ Use the stdio transport with `npx graph-polymarket-mcp` as the command, passing 
 | `get_user_positions` | Get a user's current token positions | Slimmed P&L |
 | `get_recent_activity` | Get recent splits, merges, and redemptions | Activity |
 | `get_orderbook_trades` | Get recent order fills with maker/taker filtering | Orderbook |
+| `get_market_open_interest` | Top markets ranked by USDC locked in outstanding positions | Open Interest |
+| `get_oi_history` | Hourly OI snapshots for a specific market (for charting trends) | Open Interest |
+| `get_global_open_interest` | Total platform-wide open interest and market count | Open Interest |
 
 ## Subgraphs
 
@@ -104,6 +107,7 @@ Use the stdio transport with `npx graph-polymarket-mcp` as the command, passing 
 | Slimmed P&L | `QmZAYiMeZiWC7ZjdWepek7hy1jbcW3ngimBF9ibTiTtwQU` | Minimal position data |
 | Activity | `Qmf3qPUsfQ8et6E3QNBmuXXKqUJi91mo5zbsaTkQrSnMAP` | Position management events |
 | Orderbook | `QmVGA9vvNZtEquVzDpw8wnTFDxVjB6mavTRMTrKuUBhi4t` | Order fill analytics |
+| Open Interest | `QmSxQXpkfyEv3CJ1MvJiwbtF8GAUndSTEzvB2w6HFYeXWR` | Per-market and global OI with hourly snapshots |
 
 ## Example Queries
 
@@ -114,6 +118,9 @@ Once connected, an AI agent can:
 - "What are the positions for address 0x...?"
 - "Get the P&L for trader 0x...?"
 - "Query the main subgraph for all conditions with more than 100 trades"
+- "Which markets have the most open interest right now?"
+- "Show me the OI trend for market 0x..."
+- "What's the total open interest across all Polymarket markets?"
 
 ## Development
 

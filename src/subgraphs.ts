@@ -68,6 +68,17 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
       "Account (per-trader volume and activity)",
     ],
   },
+  open_interest: {
+    name: "Open Interest",
+    ipfsHash: "QmSxQXpkfyEv3CJ1MvJiwbtF8GAUndSTEzvB2w6HFYeXWR",
+    description:
+      "The only Polymarket subgraph dedicated to open interest. Tracks USDC currently locked in outstanding YES/NO positions per market, with hourly snapshots for time-series analysis. OI is computed from PositionSplit (increases), PositionsMerge (decreases), and PayoutRedemption (decreases) events on the ConditionalTokens contract. Best for: identifying markets with the most capital at risk, charting OI trends over time, and detecting capital flow shifts across markets.",
+    keyEntities: [
+      "MarketOpenInterest (amount in USDC, splitCount, mergeCount, redemptionCount)",
+      "OISnapshot (hourly bucketed OI per market — amount, timestamp, blockNumber)",
+      "GlobalOpenInterest (total OI across all markets, marketCount)",
+    ],
+  },
 };
 
 export const SUBGRAPH_NAMES = Object.keys(SUBGRAPHS) as [string, ...string[]];
