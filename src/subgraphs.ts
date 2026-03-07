@@ -70,13 +70,36 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
   },
   open_interest: {
     name: "Open Interest",
-    ipfsHash: "QmSxQXpkfyEv3CJ1MvJiwbtF8GAUndSTEzvB2w6HFYeXWR",
+    ipfsHash: "QmbT2MmS2VGbGihiTUmWk6GMc2QYqoT9ZhiupUicYMWt6H",
     description:
       "The only Polymarket subgraph dedicated to open interest. Tracks USDC currently locked in outstanding YES/NO positions per market, with hourly snapshots for time-series analysis. OI is computed from PositionSplit (increases) and PositionsMerge (decreases) events on the ConditionalTokens contract. IMPORTANT: Polymarket does NOT use on-chain PayoutRedemption — winners sell shares on the orderbook or merge positions instead. This means resolved markets will still show residual OI from losing-side tokens that will never be redeemed. High OI on a resolved market = dead money (worthless losing tokens), not unclaimed winnings. Best for: identifying markets with the most capital at risk, charting OI trends over time, and detecting capital flow shifts across markets.",
     keyEntities: [
       "MarketOpenInterest (amount in USDC, splitCount, mergeCount — cross-reference with main subgraph for resolution status)",
       "OISnapshot (hourly bucketed OI per market — amount, timestamp, blockNumber)",
       "GlobalOpenInterest (total OI across all markets, marketCount)",
+    ],
+  },
+  resolution: {
+    name: "Market Resolution",
+    ipfsHash: "QmZnnrHWCB1Mb8dxxXDxfComjNdaGyRC66W8derjn3XDPg",
+    description:
+      "Tracks the full UMA oracle resolution lifecycle for every Polymarket question. Each MarketResolution entity captures the current status (initialized → proposed → resolved), whether it was disputed, proposed/reproposed prices, and moderator flags. Revision entities log moderator updates with timestamps. Best for: monitoring market resolution progress, detecting disputed outcomes, auditing oracle activity, and checking if a market was flagged or paused.",
+    keyEntities: [
+      "MarketResolution (questionId, status, proposedPrice, price, flagged, paused, wasDisputed)",
+      "Revision (moderator, questionId, timestamp, update)",
+      "Moderator (address, canMod)",
+      "AncillaryDataHashToQuestionId (maps ancillary data to questionId)",
+    ],
+  },
+  traders: {
+    name: "Traders",
+    ipfsHash: "QmfT4YQwFfAi77hrC2JH3JiPF7C4nEn27UQRGNpSpUupqn",
+    description:
+      "Per-trader event log indexing every CTF interaction and USDC flow. Each Trader has a derived list of CTFEvents (splits, merges, transfers, resolutions, redemptions) and USDCTransfers (inbound/outbound with amounts). Best for: building trader profiles, tracking when a wallet first appeared, reconstructing a trader's full on-chain history, and analyzing USDC deposit/withdrawal patterns.",
+    keyEntities: [
+      "Trader (address, firstSeenBlock, firstSeenTimestamp)",
+      "CTFEvent (eventType, conditionId, amounts, timestamp) — immutable, @derivedFrom trader",
+      "USDCTransfer (from, to, amount, isInbound, timestamp) — immutable, @derivedFrom trader",
     ],
   },
 };

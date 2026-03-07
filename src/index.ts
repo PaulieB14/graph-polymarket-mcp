@@ -8,7 +8,7 @@ import { SUBGRAPHS, SUBGRAPH_NAMES } from "./subgraphs.js";
 
 const server = new McpServer({
   name: "graph-polymarket-mcp",
-  version: "1.3.1",
+  version: "1.4.0",
 });
 
 // Helper to format tool responses
@@ -598,6 +598,211 @@ server.registerTool(
 );
 
 // ---------------------------------------------------------------------------
+// Tool 16: get_market_resolution
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_market_resolution",
+  {
+    description:
+      "Get the UMA oracle resolution status for Polymarket markets. Shows whether a market is initialized, proposed, disputed, or resolved, plus proposed/final prices and dispute history.",
+    inputSchema: {
+      first: z.number().min(1).max(100).default(10).describe("Number of markets to return (1-100)"),
+      status: z
+        .enum(["initialized", "proposed", "resolved", "disputed", "challenged", "reproposed"])
+        .optional()
+        .describe("Optional: filter by resolution status"),
+      orderBy: z
+        .enum(["lastUpdateTimestamp", "id"])
+        .default("lastUpdateTimestamp")
+        .describe("Field to sort by"),
+      orderDirection: z.enum(["asc", "desc"]).default("desc").describe("Sort direction"),
+    },
+  },
+  async ({ first, status, orderBy, orderDirection }) => {
+    try {
+      const where = status ? `, where: { status: "${status}" }` : "";
+      const query = `{
+        marketResolutions(first: ${first}, orderBy: ${orderBy}, orderDirection: ${orderDirection}${where}) {
+          id
+          status
+          flagged
+          paused
+          wasDisputed
+          proposedPrice
+          reproposedPrice
+          price
+          lastUpdateTimestamp
+          requestTransactionHash
+          resolutionTransactionHash
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.resolution.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool 17: get_disputed_markets
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_disputed_markets",
+  {
+    description:
+      "Get Polymarket markets that were disputed during the UMA oracle resolution process. Disputes happen when someone challenges a proposed outcome — these are high-signal events.",
+    inputSchema: {
+      first: z.number().min(1).max(100).default(20).describe("Number of disputed markets to return"),
+    },
+  },
+  async ({ first }) => {
+    try {
+      const query = `{
+        marketResolutions(first: ${first}, orderBy: lastUpdateTimestamp, orderDirection: desc, where: { wasDisputed: true }) {
+          id
+          status
+          flagged
+          proposedPrice
+          reproposedPrice
+          price
+          wasDisputed
+          lastUpdateTimestamp
+          requestTransactionHash
+          resolutionTransactionHash
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.resolution.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool 18: get_market_revisions
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_market_revisions",
+  {
+    description:
+      "Get moderator revisions/updates for Polymarket markets. Shows when and how moderators intervened in market resolution.",
+    inputSchema: {
+      questionId: z.string().optional().describe("Optional: filter revisions for a specific market questionId"),
+      first: z.number().min(1).max(100).default(20).describe("Number of revisions to return"),
+    },
+  },
+  async ({ questionId, first }) => {
+    try {
+      const where = questionId ? `, where: { questionId: "${questionId}" }` : "";
+      const query = `{
+        revisions(first: ${first}, orderBy: timestamp, orderDirection: desc${where}) {
+          id
+          moderator
+          questionId
+          timestamp
+          update
+          transactionHash
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.resolution.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool 19: get_trader_profile
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_trader_profile",
+  {
+    description:
+      "Get a trader's on-chain profile from the Traders subgraph: when they first appeared, their recent CTF events (splits, merges, transfers), and USDC flows.",
+    inputSchema: {
+      address: z.string().describe("Ethereum address of the trader"),
+      eventLimit: z.number().min(1).max(100).default(20).describe("Number of recent events to return"),
+    },
+  },
+  async ({ address, eventLimit }) => {
+    try {
+      const addr = address.toLowerCase();
+      const query = `{
+        trader(id: "${addr}") {
+          id
+          firstSeenBlock
+          firstSeenTimestamp
+          ctfEvents(first: ${eventLimit}, orderBy: timestamp, orderDirection: desc) {
+            id
+            eventType
+            conditionId
+            amounts
+            blockNumber
+            timestamp
+          }
+          usdcTransfers(first: ${eventLimit}, orderBy: timestamp, orderDirection: desc) {
+            id
+            from
+            to
+            amount
+            isInbound
+            blockNumber
+            timestamp
+          }
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.traders.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool 20: get_trader_usdc_flows
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_trader_usdc_flows",
+  {
+    description:
+      "Get USDC deposit/withdrawal history for a trader. Shows inbound and outbound USDC transfers, useful for tracking when traders fund or withdraw from Polymarket.",
+    inputSchema: {
+      address: z.string().describe("Ethereum address of the trader"),
+      direction: z.enum(["inbound", "outbound", "both"]).default("both").describe("Filter by transfer direction"),
+      first: z.number().min(1).max(100).default(50).describe("Number of transfers to return"),
+    },
+  },
+  async ({ address, direction, first }) => {
+    try {
+      const addr = address.toLowerCase();
+      const dirFilter =
+        direction === "both"
+          ? `trader: "${addr}"`
+          : `trader: "${addr}", isInbound: ${direction === "inbound"}`;
+      const query = `{
+        usdctransfers(first: ${first}, orderBy: timestamp, orderDirection: desc, where: { ${dirFilter} }) {
+          id
+          from
+          to
+          amount
+          isInbound
+          blockNumber
+          timestamp
+        }
+      }`;
+      const data = await querySubgraph(SUBGRAPHS.traders.ipfsHash, query);
+      return textResult(data);
+    } catch (error) {
+      return errorResult(error);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
 // MCP Prompts - guided workflows for agents
 // ---------------------------------------------------------------------------
 server.registerPrompt(
@@ -614,10 +819,11 @@ server.registerPrompt(
           type: "text" as const,
           text: `Analyze the Polymarket trader at address ${address}. Follow these steps:
 1. Use get_account_pnl to get their P&L metrics and performance stats
-2. Use get_user_positions to see their current open positions
-3. Use get_orderbook_trades with the maker parameter to see their recent trades
-4. Use get_recent_activity with the account parameter to check splits/merges/redemptions
-5. Summarize: overall profitability, win rate, active positions, and trading patterns`,
+2. Use get_trader_profile to see their on-chain history (CTF events and USDC flows)
+3. Use get_user_positions to see their current open positions
+4. Use get_orderbook_trades with the maker parameter to see their recent trades
+5. Use get_recent_activity with the account parameter to check splits/merges/redemptions
+6. Summarize: overall profitability, win rate, active positions, USDC deposit/withdrawal patterns, and trading behavior`,
         },
       },
     ],
@@ -653,7 +859,7 @@ server.registerPrompt(
   {
     description: "Explore a specific Polymarket subgraph's schema and sample data",
     argsSchema: {
-      subgraph: z.string().describe("Subgraph id: main, beefy_pnl, slimmed_pnl, activity, orderbook, or open_interest"),
+      subgraph: z.string().describe("Subgraph id: main, beefy_pnl, slimmed_pnl, activity, orderbook, open_interest, resolution, or traders"),
     },
   },
   ({ subgraph }) => ({
@@ -677,7 +883,11 @@ Working example queries by subgraph:
 - activity: { splits(first: 5, orderBy: timestamp, orderDirection: desc) { stakeholder amount timestamp } }
 - open_interest: { marketOpenInterests(first: 5, orderBy: amount, orderDirection: desc) { id amount splitCount mergeCount lastUpdatedTimestamp } }
 - open_interest global: { globalOpenInterests(first: 1) { amount marketCount lastUpdatedTimestamp } }
-- open_interest history: { oisnapshots(first: 24, orderBy: timestamp, orderDirection: desc, where: { market: "0x..." }) { amount timestamp } }`,
+- open_interest history: { oisnapshots(first: 24, orderBy: timestamp, orderDirection: desc, where: { market: "0x..." }) { amount timestamp } }
+- resolution: { marketResolutions(first: 5, orderBy: lastUpdateTimestamp, orderDirection: desc) { id status flagged wasDisputed proposedPrice price lastUpdateTimestamp } }
+- resolution disputed: { marketResolutions(first: 5, where: { wasDisputed: true }) { id status proposedPrice reproposedPrice price } }
+- traders: { trader(id: "0x...") { id firstSeenBlock firstSeenTimestamp ctfEvents(first: 5) { eventType conditionId amounts timestamp } } }
+- traders usdc: { usdctransfers(first: 5, orderBy: timestamp, orderDirection: desc, where: { trader: "0x..." }) { from to amount isInbound timestamp } }`,
         },
       },
     ],

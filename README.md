@@ -12,7 +12,7 @@
 
 **MCP server for querying [Polymarket](https://polymarket.com/) prediction market data via [The Graph](https://thegraph.com/) subgraphs.**
 
-Exposes 15 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, orderbook trades, and open interest.
+Exposes 20 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, orderbook trades, open interest, market resolution status, and trader profiles.
 
 </div>
 
@@ -97,6 +97,11 @@ Use the stdio transport with `npx graph-polymarket-mcp` as the command, passing 
 | `get_market_open_interest` | Top markets ranked by USDC locked in outstanding positions | Open Interest |
 | `get_oi_history` | Hourly OI snapshots for a specific market (for charting trends) | Open Interest |
 | `get_global_open_interest` | Total platform-wide open interest and market count | Open Interest |
+| `get_market_resolution` | UMA oracle resolution status with filtering by status | Resolution |
+| `get_disputed_markets` | Markets disputed during oracle resolution (high-signal events) | Resolution |
+| `get_market_revisions` | Moderator interventions and updates on market resolution | Resolution |
+| `get_trader_profile` | Full trader profile: first seen, CTF events, USDC flows | Traders |
+| `get_trader_usdc_flows` | USDC deposit/withdrawal history with direction filtering | Traders |
 
 ## Subgraphs
 
@@ -107,7 +112,9 @@ Use the stdio transport with `npx graph-polymarket-mcp` as the command, passing 
 | Slimmed P&L | `QmZAYiMeZiWC7ZjdWepek7hy1jbcW3ngimBF9ibTiTtwQU` | Minimal position data |
 | Activity | `Qmf3qPUsfQ8et6E3QNBmuXXKqUJi91mo5zbsaTkQrSnMAP` | Position management events |
 | Orderbook | `QmVGA9vvNZtEquVzDpw8wnTFDxVjB6mavTRMTrKuUBhi4t` | Order fill analytics |
-| Open Interest | `QmSxQXpkfyEv3CJ1MvJiwbtF8GAUndSTEzvB2w6HFYeXWR` | Per-market and global OI with hourly snapshots |
+| Open Interest | `QmbT2MmS2VGbGihiTUmWk6GMc2QYqoT9ZhiupUicYMWt6H` | Per-market and global OI with hourly snapshots |
+| Resolution | `QmZnnrHWCB1Mb8dxxXDxfComjNdaGyRC66W8derjn3XDPg` | UMA oracle resolution lifecycle |
+| Traders | `QmfT4YQwFfAi77hrC2JH3JiPF7C4nEn27UQRGNpSpUupqn` | Per-trader event logs and USDC flows |
 
 ## Example Queries
 
@@ -121,6 +128,10 @@ Once connected, an AI agent can:
 - "Which markets have the most open interest right now?"
 - "Show me the OI trend for market 0x..."
 - "What's the total open interest across all Polymarket markets?"
+- "Show me disputed markets on Polymarket"
+- "What's the resolution status of market 0x...?"
+- "Show me the full trading history for wallet 0x..."
+- "Track USDC deposits and withdrawals for trader 0x..."
 
 ## Development
 
