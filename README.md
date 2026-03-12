@@ -71,6 +71,43 @@ Set the environment variable `GRAPH_API_KEY` before running.
 
 Use the stdio transport with `npx graph-polymarket-mcp` as the command, passing `GRAPH_API_KEY` as an environment variable.
 
+### OpenClaw / Remote Agents (SSE)
+
+Start the server with the HTTP transport:
+
+```bash
+# Dual transport — stdio + SSE on port 3851
+GRAPH_API_KEY=your-key npx graph-polymarket-mcp --http
+
+# SSE only (for remote/server deployments)
+GRAPH_API_KEY=your-key npx graph-polymarket-mcp --http-only
+
+# Custom port
+MCP_HTTP_PORT=4000 GRAPH_API_KEY=your-key npx graph-polymarket-mcp --http
+```
+
+Then point your agent at the SSE endpoint:
+
+```json
+{
+  "mcpServers": {
+    "graph-polymarket": {
+      "url": "http://localhost:3851/sse"
+    }
+  }
+}
+```
+
+### Transport Modes
+
+| Invocation | Transports | Use case |
+|---|---|---|
+| `npx graph-polymarket-mcp` | stdio | Claude Desktop, Cursor, Claude Code |
+| `npx graph-polymarket-mcp --http` | stdio + SSE :3851 | Dual — local + remote agents |
+| `npx graph-polymarket-mcp --http-only` | SSE :3851 | OpenClaw, remote deployments |
+
+A `/health` endpoint is available at `http://localhost:3851/health` when HTTP transport is active.
+
 ## Available Tools
 
 ### Core Tools

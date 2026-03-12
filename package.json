@@ -1,8 +1,8 @@
 {
   "name": "graph-polymarket-mcp",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "mcpName": "io.github.PaulieB14/graph-polymarket-mcp",
-  "description": "MCP server for querying Polymarket data via The Graph subgraphs",
+  "description": "MCP server for querying Polymarket data via The Graph subgraphs — supports stdio and SSE transports",
   "type": "module",
   "bin": {
     "graph-polymarket-mcp": "build/index.js"
@@ -11,6 +11,8 @@
   "scripts": {
     "build": "tsc && chmod 755 build/index.js",
     "start": "node build/index.js",
+    "start:http": "node build/index.js --http",
+    "start:http-only": "node build/index.js --http-only",
     "prepublishOnly": "npm run build"
   },
   "files": [
@@ -18,12 +20,17 @@
   ],
   "keywords": [
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "polymarket",
     "thegraph",
     "subgraph",
     "prediction-market",
     "ai",
-    "claude"
+    "claude",
+    "ai-agent",
+    "openclaw",
+    "sse"
   ],
   "author": "PaulieB14",
   "license": "MIT",
@@ -37,9 +44,11 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "express": "^4.21.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   },

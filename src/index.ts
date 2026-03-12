@@ -2,6 +2,8 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import express from "express";
 import { z } from "zod";
 import { querySubgraph } from "./graphClient.js";
 import { SUBGRAPHS, SUBGRAPH_NAMES } from "./subgraphs.js";
@@ -945,12 +947,58 @@ server.registerPrompt(
 );
 
 // ---------------------------------------------------------------------------
+// HTTP/SSE Transport
+// ---------------------------------------------------------------------------
+function startHttpTransport(port: number) {
+  const app = express();
+  const sessions = new Map<string, SSEServerTransport>();
+
+  app.get("/sse", async (req, res) => {
+    const transport = new SSEServerTransport("/messages", res);
+    sessions.set(transport.sessionId, transport);
+    res.on("close", () => {
+      sessions.delete(transport.sessionId);
+    });
+    await server.connect(transport);
+  });
+
+  app.post("/messages", async (req, res) => {
+    const sessionId = req.query.sessionId as string;
+    const transport = sessions.get(sessionId);
+    if (!transport) {
+      res.status(400).json({ error: "Invalid or expired session" });
+      return;
+    }
+    await transport.handlePostMessage(req, res);
+  });
+
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", server: "graph-polymarket-mcp" });
+  });
+
+  app.listen(port, () => {
+    console.error(`SSE transport listening on http://localhost:${port}/sse`);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Start server
 // ---------------------------------------------------------------------------
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Graph Polymarket MCP server running on stdio");
+  const httpPort = process.env.MCP_HTTP_PORT || (process.argv.includes("--http") ? "3851" : null);
+  const httpOnly = process.argv.includes("--http-only");
+
+  if (httpPort || httpOnly) {
+    const port = parseInt(httpPort || "3851", 10);
+    startHttpTransport(port);
+  }
+
+  if (!httpOnly) {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+  }
+
+  console.error("Graph Polymarket MCP server running");
 }
 
 main().catch((error) => {
