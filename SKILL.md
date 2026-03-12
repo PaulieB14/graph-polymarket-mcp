@@ -25,11 +25,24 @@ Query Polymarket prediction market data via The Graph subgraphs — market stats
 - **get_trader_profile** — Full trader profile: first seen, CTF events, USDC flows
 - **get_trader_usdc_flows** — USDC deposit/withdrawal history with direction filtering
 
+## Requirements
+
+- **Runtime:** Node.js >= 18 (runs via `npx`)
+- **Environment variables:**
+  - `GRAPH_API_KEY` (required) — Free API key from [The Graph Studio](https://thegraph.com/studio/). Used to query 8 Polymarket subgraphs via The Graph Gateway. Queries are billed to your key (free tier: 100K queries/month).
+
 ## Install
 
 ```bash
-npx graph-polymarket-mcp
+GRAPH_API_KEY=your-key npx graph-polymarket-mcp
 ```
+
+## Network & Data Behavior
+
+- All tool calls make GraphQL requests to The Graph Gateway (`gateway.thegraph.com`) using your API key.
+- Eight subgraphs are queried: Main, Beefy P&L, Slimmed P&L, Activity, Orderbook, Open Interest, Resolution, and Traders (IPFS hashes are built into the server).
+- No local database or persistent storage is used.
+- The SSE transport (`--http` / `--http-only`) starts a local HTTP server on port 3851 (configurable via `MCP_HTTP_PORT` env var).
 
 ## Use Cases
 
