@@ -1,3 +1,10 @@
+---
+name: graph-polymarket-mcp
+description: Query Polymarket prediction market data via The Graph — 20 tools for market stats, trader P&L, positions, orderbook trades, open interest, resolution status, and trader profiles.
+metadata:
+  {"openclaw": {"requires": {"bins": ["node"], "env": ["GRAPH_API_KEY"]}, "primaryEnv": "GRAPH_API_KEY", "homepage": "https://github.com/PaulieB14/graph-polymarket-mcp"}}
+---
+
 # Graph Polymarket MCP
 
 Query Polymarket prediction market data via The Graph subgraphs — market stats, trader P&L, positions, orderbook trades, open interest, resolution status, and trader profiles.
