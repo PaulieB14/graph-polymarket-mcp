@@ -10,7 +10,7 @@ import { SUBGRAPHS, SUBGRAPH_NAMES } from "./subgraphs.js";
 
 const server = new McpServer({
   name: "graph-polymarket-mcp",
-  version: "1.4.0",
+  version: "1.6.0",
 });
 
 // Helper to format tool responses
@@ -202,19 +202,39 @@ server.registerTool(
   },
   async ({ account }) => {
     try {
-      const query = `{
-        userPositions(where: { user: "${account.toLowerCase()}" }, first: 100) {
-          id
-          user
-          tokenId
-          amount
-          avgPrice
-          realizedPnl
-          totalBought
+      const addr = account.toLowerCase();
+      const posQuery = `{
+        userPositions(where: { user: "${addr}" }, first: 100) {
+          id user tokenId amount avgPrice realizedPnl totalBought
         }
       }`;
-      const data = await querySubgraph(SUBGRAPHS.slimmed_pnl.ipfsHash, query);
-      return textResult(data);
+      const obQuery = `{
+        account(id: "${addr}") {
+          id collateralVolume numTrades numBuys numSells
+        }
+      }`;
+      const [posData, obData] = await Promise.all([
+        querySubgraph(SUBGRAPHS.slimmed_pnl.ipfsHash, posQuery),
+        querySubgraph(SUBGRAPHS.orderbook.ipfsHash, obQuery).catch(() => null),
+      ]);
+      const pd = posData as { userPositions?: Array<{ totalBought: string }> };
+      const totalBought = (pd.userPositions ?? []).reduce(
+        (sum, p) => sum + parseFloat(p.totalBought || "0"), 0
+      );
+      const od = obData as { account?: { collateralVolume?: string; numTrades?: string } } | null;
+      const obVolume = parseFloat(od?.account?.collateralVolume || "0");
+      const obTrades = parseInt(od?.account?.numTrades || "0");
+      let reliabilityWarning: string | undefined;
+      if (obVolume > 0 && totalBought === 0) {
+        reliabilityWarning = `⚠ orderbook-only entry — no split collateral detected. OB volume: $${obVolume.toFixed(2)} across ${obTrades} trades. P&L from totalBought/avgPrice fields is unreliable.`;
+      } else if (obVolume > 0 && obVolume > totalBought * 2 && obVolume - totalBought > 1000) {
+        reliabilityWarning = `⚠ mixed entry — OB volume ($${obVolume.toFixed(2)}) significantly exceeds split collateral ($${totalBought.toFixed(2)}). Some positions entered via orderbook buys; P&L may be understated.`;
+      }
+      return textResult({
+        positions: pd.userPositions ?? [],
+        orderbookAccount: od?.account ?? null,
+        ...(reliabilityWarning ? { reliabilityWarning } : {}),
+      });
     } catch (error) {
       return errorResult(error);
     }
@@ -235,35 +255,73 @@ server.registerTool(
   },
   async ({ first, account }) => {
     try {
-      const stakeholderWhere = account
-        ? `, where: { stakeholder: "${account.toLowerCase()}" }`
-        : "";
-      const redeemerWhere = account
-        ? `, where: { redeemer: "${account.toLowerCase()}" }`
-        : "";
-      const query = `{
+      const addr = account?.toLowerCase();
+      const stakeholderWhere = addr ? `, where: { stakeholder: "${addr}" }` : "";
+      const redeemerWhere = addr ? `, where: { redeemer: "${addr}" }` : "";
+      const activityQuery = `{
         splits(first: ${first}, orderBy: timestamp, orderDirection: desc${stakeholderWhere}) {
-          id
-          stakeholder
-          amount
-          timestamp
+          id stakeholder amount timestamp
         }
         merges(first: ${first}, orderBy: timestamp, orderDirection: desc${stakeholderWhere}) {
-          id
-          stakeholder
-          amount
-          timestamp
+          id stakeholder amount timestamp
         }
         redemptions(first: ${first}, orderBy: timestamp, orderDirection: desc${redeemerWhere}) {
-          id
-          redeemer
-          payout
-          indexSets
-          timestamp
+          id redeemer payout indexSets timestamp
         }
       }`;
-      const data = await querySubgraph(SUBGRAPHS.activity.ipfsHash, query);
-      return textResult(data);
+      // Fetch OB fills: if account-filtered, query as maker + taker separately; else recent fills
+      const obQuery = addr
+        ? `{
+            makerFills: orderFilledEvents(first: ${first}, orderBy: timestamp, orderDirection: desc, where: { maker: "${addr}" }) {
+              id maker taker price side fee makerAmountFilled takerAmountFilled timestamp
+            }
+            takerFills: orderFilledEvents(first: ${first}, orderBy: timestamp, orderDirection: desc, where: { taker: "${addr}" }) {
+              id maker taker price side fee makerAmountFilled takerAmountFilled timestamp
+            }
+          }`
+        : `{
+            orderFilledEvents(first: ${first}, orderBy: timestamp, orderDirection: desc) {
+              id maker taker price side fee makerAmountFilled takerAmountFilled timestamp
+            }
+          }`;
+      const [actData, obData] = await Promise.all([
+        querySubgraph(SUBGRAPHS.activity.ipfsHash, activityQuery),
+        querySubgraph(SUBGRAPHS.orderbook.ipfsHash, obQuery).catch(() => null),
+      ]);
+      type EventRecord = { eventType: string; timestamp: string; [key: string]: unknown };
+      const ad = actData as {
+        splits?: Array<{ id: string; stakeholder: string; amount: string; timestamp: string }>;
+        merges?: Array<{ id: string; stakeholder: string; amount: string; timestamp: string }>;
+        redemptions?: Array<{ id: string; redeemer: string; payout: string; timestamp: string }>;
+      };
+      const od = obData as {
+        orderFilledEvents?: Array<{ id: string; timestamp: string }>;
+        makerFills?: Array<{ id: string; timestamp: string }>;
+        takerFills?: Array<{ id: string; timestamp: string }>;
+      } | null;
+      const events: EventRecord[] = [
+        ...(ad.splits ?? []).map((e) => ({ eventType: "split", ...e })),
+        ...(ad.merges ?? []).map((e) => ({ eventType: "merge", ...e })),
+        ...(ad.redemptions ?? []).map((e) => ({ eventType: "redemption", ...e })),
+      ];
+      const rawFills = od
+        ? addr
+          ? [
+              ...(od.makerFills ?? []).map((e) => ({ eventType: "ob_fill_maker", ...e })),
+              ...(od.takerFills ?? []).map((e) => ({ eventType: "ob_fill_taker", ...e })),
+            ]
+          : (od.orderFilledEvents ?? []).map((e) => ({ eventType: "ob_fill", ...e }))
+        : [];
+      // Deduplicate fills (same fill can appear as both maker and taker)
+      const seen = new Set<string>();
+      for (const e of rawFills) {
+        if (!seen.has(e.id as string)) {
+          seen.add(e.id as string);
+          events.push(e as EventRecord);
+        }
+      }
+      events.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+      return textResult({ feed: events.slice(0, first * 2) });
     } catch (error) {
       return errorResult(error);
     }
@@ -418,29 +476,51 @@ server.registerTool(
   },
   async ({ first, orderBy, minTrades }) => {
     try {
-      const query = `{
+      const beefyQuery = `{
         accounts(
           first: ${first},
           orderBy: ${orderBy},
           orderDirection: desc,
           where: { numTrades_gte: "${minTrades}" }
         ) {
-          id
-          numTrades
-          collateralVolume
-          totalRealizedPnl
-          totalUnrealizedPnl
-          totalFeesPaid
-          winRate
-          profitFactor
-          maxDrawdown
-          numWinningPositions
-          numLosingPositions
-          lastTradedTimestamp
+          id numTrades collateralVolume totalRealizedPnl totalUnrealizedPnl
+          totalFeesPaid winRate profitFactor maxDrawdown
+          numWinningPositions numLosingPositions lastTradedTimestamp
         }
       }`;
-      const data = await querySubgraph(SUBGRAPHS.beefy_pnl.ipfsHash, query);
-      return textResult(data);
+      // Fetch top OB-volume accounts to surface OB-only traders absent from Beefy rankings
+      const obQuery = `{
+        accounts(first: ${first}, orderBy: collateralVolume, orderDirection: desc) {
+          id collateralVolume numTrades
+        }
+      }`;
+      const [beefyData, obData] = await Promise.all([
+        querySubgraph(SUBGRAPHS.beefy_pnl.ipfsHash, beefyQuery),
+        querySubgraph(SUBGRAPHS.orderbook.ipfsHash, obQuery).catch(() => null),
+      ]);
+      const bd = beefyData as { accounts?: Array<{ id: string; collateralVolume?: string }> };
+      const od = obData as { accounts?: Array<{ id: string; collateralVolume: string; numTrades: string }> } | null;
+      const beefyIds = new Set((bd.accounts ?? []).map((a) => a.id));
+      const obById = new Map((od?.accounts ?? []).map((a) => [a.id, a]));
+      // Flag beefy rows where OB-tracked volume significantly exceeds Beefy-tracked volume
+      const annotated = (bd.accounts ?? []).map((a) => {
+        const ob = obById.get(a.id);
+        const beefyVol = parseFloat(a.collateralVolume || "0");
+        const obVol = ob ? parseFloat(ob.collateralVolume) : null;
+        const flag =
+          obVol !== null && obVol > beefyVol * 1.5 && obVol - beefyVol > 1000
+            ? `⚠ OB volume ($${obVol.toFixed(0)}) exceeds Beefy-tracked volume ($${beefyVol.toFixed(0)}) — P&L ranking may be incomplete`
+            : undefined;
+        return { ...a, ...(flag ? { reliabilityWarning: flag } : {}) };
+      });
+      // Surface high-volume OB traders completely absent from Beefy leaderboard
+      const obOnlyTraders = (od?.accounts ?? [])
+        .filter((a) => !beefyIds.has(a.id))
+        .map((a) => ({ address: a.id, obVolume: a.collateralVolume, obTrades: a.numTrades, note: "not tracked by Beefy P&L subgraph — P&L unavailable" }));
+      return textResult({
+        traders: annotated,
+        ...(obOnlyTraders.length > 0 ? { obOnlyTradersNotInLeaderboard: obOnlyTraders } : {}),
+      });
     } catch (error) {
       return errorResult(error);
     }
@@ -511,21 +591,46 @@ server.registerTool(
   },
   async ({ first, orderBy, orderDirection }) => {
     try {
-      const query = `{
+      const oiQuery = `{
         marketOpenInterests(first: ${first}, orderBy: ${orderBy}, orderDirection: ${orderDirection}) {
-          id
-          conditionId
-          amount
-          amountRaw
-          splitCount
-          mergeCount
-          redemptionCount
-          createdAtTimestamp
-          lastUpdatedTimestamp
+          id conditionId amount amountRaw splitCount mergeCount redemptionCount
+          createdAtTimestamp lastUpdatedTimestamp
         }
       }`;
-      const data = await querySubgraph(SUBGRAPHS.open_interest.ipfsHash, query);
-      return textResult(data);
+      const oiData = await querySubgraph(SUBGRAPHS.open_interest.ipfsHash, oiQuery);
+      const od = oiData as { marketOpenInterests?: Array<{ conditionId: string; amount: string }> };
+      const conditionIds = (od.marketOpenInterests ?? []).map((m) => m.conditionId).filter(Boolean);
+      // Cross-ref Main subgraph: payoutDenominator > 0 means market is resolved
+      const resolutionMap = new Map<string, boolean>();
+      if (conditionIds.length > 0) {
+        const ids = conditionIds.map((id) => `"${id}"`).join(", ");
+        const mainQuery = `{ conditions(where: { id_in: [${ids}] }) { id payoutDenominator } }`;
+        const mainData = await querySubgraph(SUBGRAPHS.main.ipfsHash, mainQuery).catch(() => null);
+        if (mainData) {
+          const md = mainData as { conditions?: Array<{ id: string; payoutDenominator: string }> };
+          for (const c of md.conditions ?? []) {
+            resolutionMap.set(c.id, parseInt(c.payoutDenominator || "0") > 0);
+          }
+        }
+      }
+      const annotated = (od.marketOpenInterests ?? []).map((m) => {
+        if (resolutionMap.get(m.conditionId)) {
+          return {
+            ...m,
+            warning: `⚠ dead money — market resolved. $${parseFloat(m.amount).toFixed(2)} OI represents worthless losing-side tokens that will never be redeemed on-chain.`,
+          };
+        }
+        return m;
+      });
+      const deadMoneyTotal = (od.marketOpenInterests ?? [])
+        .filter((m) => resolutionMap.get(m.conditionId))
+        .reduce((sum, m) => sum + parseFloat(m.amount || "0"), 0);
+      return textResult({
+        markets: annotated,
+        ...(deadMoneyTotal > 0
+          ? { deadMoneyOI: `$${deadMoneyTotal.toFixed(2)} of displayed OI is from resolved markets (losing tokens — not redeemable on-chain)` }
+          : {}),
+      });
     } catch (error) {
       return errorResult(error);
     }
@@ -732,32 +837,67 @@ server.registerTool(
   async ({ address, eventLimit }) => {
     try {
       const addr = address.toLowerCase();
-      const query = `{
+      const tradersQuery = `{
         trader(id: "${addr}") {
-          id
-          firstSeenBlock
-          firstSeenTimestamp
+          id firstSeenBlock firstSeenTimestamp
           ctfEvents(first: ${eventLimit}, orderBy: timestamp, orderDirection: desc) {
-            id
-            eventType
-            conditionId
-            amounts
-            blockNumber
-            timestamp
+            id eventType conditionId amounts blockNumber timestamp
           }
           usdcTransfers(first: ${eventLimit}, orderBy: timestamp, orderDirection: desc) {
-            id
-            from
-            to
-            amount
-            isInbound
-            blockNumber
-            timestamp
+            id from to amount isInbound blockNumber timestamp
           }
         }
       }`;
-      const data = await querySubgraph(SUBGRAPHS.traders.ipfsHash, query);
-      return textResult(data);
+      const obQuery = `{
+        makerFills: orderFilledEvents(first: ${eventLimit}, orderBy: timestamp, orderDirection: desc, where: { maker: "${addr}" }) {
+          id maker taker price side fee makerAmountFilled takerAmountFilled timestamp
+        }
+        takerFills: orderFilledEvents(first: ${eventLimit}, orderBy: timestamp, orderDirection: desc, where: { taker: "${addr}" }) {
+          id maker taker price side fee makerAmountFilled takerAmountFilled timestamp
+        }
+        account(id: "${addr}") {
+          id collateralVolume numTrades
+        }
+      }`;
+      const [tradersData, obData] = await Promise.all([
+        querySubgraph(SUBGRAPHS.traders.ipfsHash, tradersQuery),
+        querySubgraph(SUBGRAPHS.orderbook.ipfsHash, obQuery).catch(() => null),
+      ]);
+      const od = obData as {
+        makerFills?: Array<{ id: string; timestamp: string }>;
+        takerFills?: Array<{ id: string; timestamp: string }>;
+        account?: { id: string; collateralVolume: string; numTrades: string };
+      } | null;
+      // Deduplicate and merge fills
+      const seen = new Set<string>();
+      const allFills = [
+        ...(od?.makerFills ?? []).map((e) => ({ ...e, role: "maker" })),
+        ...(od?.takerFills ?? []).map((e) => ({ ...e, role: "taker" })),
+      ]
+        .filter((e) => {
+          if (seen.has(e.id)) return false;
+          seen.add(e.id);
+          return true;
+        })
+        .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+      const td = tradersData as { trader?: { ctfEvents?: unknown[] } };
+      const hasCTFEvents = (td.trader?.ctfEvents?.length ?? 0) > 0;
+      const hasOBFills = allFills.length > 0;
+      const obVolume = parseFloat(od?.account?.collateralVolume || "0");
+      let entryType: string;
+      if (hasCTFEvents && hasOBFills) entryType = "hybrid (split collateral + orderbook buys)";
+      else if (!hasCTFEvents && hasOBFills) entryType = "⚠ orderbook-only — no split collateral detected";
+      else if (hasCTFEvents && !hasOBFills) entryType = "split-collateral only";
+      else entryType = "no activity detected";
+      return textResult({
+        ...(tradersData as object),
+        orderbookFills: allFills,
+        orderbookAccount: od?.account ?? null,
+        entryType,
+        ...(obVolume > 0 && !hasCTFEvents
+          ? { pnlWarning: `⚠ wallet entered entirely via orderbook buys ($${obVolume.toFixed(2)} OB volume) — P&L from Slimmed/Beefy subgraphs is unreliable` }
+          : {}),
+      });
     } catch (error) {
       return errorResult(error);
     }

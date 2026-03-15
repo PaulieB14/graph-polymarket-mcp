@@ -14,6 +14,8 @@
 
 Exposes 20 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, orderbook trades, open interest, market resolution status, and trader profiles.
 
+**v1.6.0** — five tools now cross-query multiple subgraphs in parallel to flag unreliable P&L, dead-money OI, and orderbook-only wallets that would otherwise produce misleading data.
+
 </div>
 
 > Published to the [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.PaulieB14/graph-polymarket-mcp) as `io.github.PaulieB14/graph-polymarket-mcp`
@@ -120,24 +122,24 @@ A `/health` endpoint is available at `http://localhost:3851/health` when HTTP tr
 
 ### Domain-Specific Tools
 
-| Tool | Description | Subgraph |
-|------|-------------|----------|
+| Tool | Description | Subgraphs |
+|------|-------------|-----------|
 | `get_market_data` | Get market/condition data with outcomes and resolution status | Main |
 | `get_global_stats` | Get platform stats: market counts + real volume/fees/trades | Main + Orderbook |
 | `get_account_pnl` | Get a trader's P&L and performance metrics (winRate, profitFactor, maxDrawdown) | Beefy P&L |
-| `get_top_traders` | Leaderboard of top traders ranked by PnL, winRate, volume, or profitFactor | Beefy P&L |
+| `get_top_traders` | Leaderboard ranked by PnL, winRate, volume, or profitFactor. Cross-refs Orderbook to flag rows where OB volume exceeds Beefy-tracked volume and surface OB-only traders absent from the leaderboard. | Beefy P&L + Orderbook |
 | `get_daily_stats` | Daily volume, fees, trader counts, and market activity (1–90 days) | Beefy P&L |
 | `get_market_positions` | Top holders for a specific outcome token with their P&L | Beefy P&L |
-| `get_user_positions` | Get a user's current token positions | Slimmed P&L |
-| `get_recent_activity` | Get recent splits, merges, and redemptions | Activity |
+| `get_user_positions` | Current token positions. Cross-refs Orderbook: flags ⚠ orderbook-only entry when `totalBought=0` but OB volume exists, and ⚠ mixed entry when OB volume > 2× split collateral. | Slimmed P&L + Orderbook |
+| `get_recent_activity` | Unified chronological feed interleaving splits, merges, and redemptions with orderbook fills. Supports optional address filter. | Activity + Orderbook |
 | `get_orderbook_trades` | Get recent order fills with maker/taker filtering | Orderbook |
-| `get_market_open_interest` | Top markets ranked by USDC locked in outstanding positions | Open Interest |
+| `get_market_open_interest` | Top markets ranked by USDC locked in outstanding positions. Cross-refs Main subgraph to flag ⚠ dead money OI on resolved markets (losing-side tokens that will never be redeemed on-chain). | Open Interest + Main |
 | `get_oi_history` | Hourly OI snapshots for a specific market (for charting trends) | Open Interest |
 | `get_global_open_interest` | Total platform-wide open interest and market count | Open Interest |
 | `get_market_resolution` | UMA oracle resolution status with filtering by status | Resolution |
 | `get_disputed_markets` | Markets disputed during oracle resolution (high-signal events) | Resolution |
 | `get_market_revisions` | Moderator interventions and updates on market resolution | Resolution |
-| `get_trader_profile` | Full trader profile: first seen, CTF events, USDC flows | Traders |
+| `get_trader_profile` | Full trader profile combining CTF events and USDC flows with Orderbook fills. Classifies wallet as hybrid / orderbook-only / split-collateral-only and warns when P&L subgraphs are unreliable. | Traders + Orderbook |
 | `get_trader_usdc_flows` | USDC deposit/withdrawal history with direction filtering | Traders |
 
 ## Subgraphs
@@ -159,16 +161,18 @@ Once connected, an AI agent can:
 
 - "What are the current Polymarket global stats?"
 - "Show me the latest 20 orderbook trades"
-- "What are the positions for address 0x...?"
+- "What are the positions for address 0x...?" *(flags if wallet entered via OB buys only)*
 - "Get the P&L for trader 0x...?"
 - "Query the main subgraph for all conditions with more than 100 trades"
-- "Which markets have the most open interest right now?"
+- "Which markets have the most open interest right now?" *(flags dead-money OI on resolved markets)*
 - "Show me the OI trend for market 0x..."
 - "What's the total open interest across all Polymarket markets?"
 - "Show me disputed markets on Polymarket"
 - "What's the resolution status of market 0x...?"
-- "Show me the full trading history for wallet 0x..."
+- "Show me the full trading history for wallet 0x..." *(includes OB fills + entry type classification)*
 - "Track USDC deposits and withdrawals for trader 0x..."
+- "Who are the top traders?" *(flags any with OB volume not captured by Beefy P&L)*
+- "Show me recent activity for address 0x..." *(unified feed: splits + merges + OB fills)*
 
 ## Development
 
