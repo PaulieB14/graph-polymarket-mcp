@@ -10,7 +10,7 @@ import { SUBGRAPHS, SUBGRAPH_NAMES } from "./subgraphs.js";
 
 const server = new McpServer({
   name: "graph-polymarket-mcp",
-  version: "1.6.0",
+  version: "1.6.1",
 });
 
 // Helper to format tool responses
@@ -210,7 +210,7 @@ server.registerTool(
       }`;
       const obQuery = `{
         account(id: "${addr}") {
-          id collateralVolume numTrades numBuys numSells
+          id totalVolume tradesQuantity totalFees
         }
       }`;
       const [posData, obData] = await Promise.all([
@@ -221,9 +221,9 @@ server.registerTool(
       const totalBought = (pd.userPositions ?? []).reduce(
         (sum, p) => sum + parseFloat(p.totalBought || "0"), 0
       );
-      const od = obData as { account?: { collateralVolume?: string; numTrades?: string } } | null;
-      const obVolume = parseFloat(od?.account?.collateralVolume || "0");
-      const obTrades = parseInt(od?.account?.numTrades || "0");
+      const od = obData as { account?: { totalVolume?: string; tradesQuantity?: string } } | null;
+      const obVolume = parseFloat(od?.account?.totalVolume || "0");
+      const obTrades = parseInt(od?.account?.tradesQuantity || "0");
       let reliabilityWarning: string | undefined;
       if (obVolume > 0 && totalBought === 0) {
         reliabilityWarning = `⚠ orderbook-only entry — no split collateral detected. OB volume: $${obVolume.toFixed(2)} across ${obTrades} trades. P&L from totalBought/avgPrice fields is unreliable.`;
@@ -490,8 +490,8 @@ server.registerTool(
       }`;
       // Fetch top OB-volume accounts to surface OB-only traders absent from Beefy rankings
       const obQuery = `{
-        accounts(first: ${first}, orderBy: collateralVolume, orderDirection: desc) {
-          id collateralVolume numTrades
+        accounts(first: ${first}, orderBy: totalVolume, orderDirection: desc) {
+          id totalVolume tradesQuantity
         }
       }`;
       const [beefyData, obData] = await Promise.all([
@@ -499,14 +499,14 @@ server.registerTool(
         querySubgraph(SUBGRAPHS.orderbook.ipfsHash, obQuery).catch(() => null),
       ]);
       const bd = beefyData as { accounts?: Array<{ id: string; collateralVolume?: string }> };
-      const od = obData as { accounts?: Array<{ id: string; collateralVolume: string; numTrades: string }> } | null;
+      const od = obData as { accounts?: Array<{ id: string; totalVolume: string; tradesQuantity: string }> } | null;
       const beefyIds = new Set((bd.accounts ?? []).map((a) => a.id));
       const obById = new Map((od?.accounts ?? []).map((a) => [a.id, a]));
       // Flag beefy rows where OB-tracked volume significantly exceeds Beefy-tracked volume
       const annotated = (bd.accounts ?? []).map((a) => {
         const ob = obById.get(a.id);
         const beefyVol = parseFloat(a.collateralVolume || "0");
-        const obVol = ob ? parseFloat(ob.collateralVolume) : null;
+        const obVol = ob ? parseFloat(ob.totalVolume) : null;
         const flag =
           obVol !== null && obVol > beefyVol * 1.5 && obVol - beefyVol > 1000
             ? `⚠ OB volume ($${obVol.toFixed(0)}) exceeds Beefy-tracked volume ($${beefyVol.toFixed(0)}) — P&L ranking may be incomplete`
@@ -516,7 +516,7 @@ server.registerTool(
       // Surface high-volume OB traders completely absent from Beefy leaderboard
       const obOnlyTraders = (od?.accounts ?? [])
         .filter((a) => !beefyIds.has(a.id))
-        .map((a) => ({ address: a.id, obVolume: a.collateralVolume, obTrades: a.numTrades, note: "not tracked by Beefy P&L subgraph — P&L unavailable" }));
+        .map((a) => ({ address: a.id, obVolume: a.totalVolume, obTrades: a.tradesQuantity, note: "not tracked by Beefy P&L subgraph — P&L unavailable" }));
       return textResult({
         traders: annotated,
         ...(obOnlyTraders.length > 0 ? { obOnlyTradersNotInLeaderboard: obOnlyTraders } : {}),
