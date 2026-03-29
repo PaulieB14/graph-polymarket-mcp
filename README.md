@@ -10,11 +10,11 @@
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@PaulieB14/graph-polymarket-mcp/badge" />
 </a>
 
-**MCP server for querying [Polymarket](https://polymarket.com/) prediction market data via [The Graph](https://thegraph.com/) subgraphs.**
+**MCP server for querying [Polymarket](https://polymarket.com/) prediction market data via [The Graph](https://thegraph.com/) subgraphs and Polymarket REST APIs.**
 
-Exposes 20 tools that AI agents (Claude, Cursor, etc.) can use to query market data, trader P&L, positions, activity, orderbook trades, open interest, market resolution status, and trader profiles.
+Exposes 31 tools that AI agents (Claude, Cursor, etc.) can use to search markets, get real-time CLOB prices and order books, query on-chain data, trader P&L, positions, activity, open interest, market resolution status, and trader profiles.
 
-**v1.6.0** — five tools now cross-query multiple subgraphs in parallel to flag unreliable P&L, dead-money OI, and orderbook-only wallets that would otherwise produce misleading data.
+**v2.0.0** — adds 10 new tools powered by Polymarket's Gamma and CLOB APIs (inspired by [polymarket-cli](https://github.com/Polymarket/polymarket-cli)): market search, event browsing, live prices, spreads, order books, price history, and more. No API key needed for these tools — they hit Polymarket's public REST endpoints directly.
 
 </div>
 
@@ -142,6 +142,28 @@ A `/health` endpoint is available at `http://localhost:3851/health` when HTTP tr
 | `get_trader_profile` | Full trader profile combining CTF events and USDC flows with Orderbook fills. Classifies wallet as hybrid / orderbook-only / split-collateral-only and warns when P&L subgraphs are unreliable. | Traders + Orderbook |
 | `get_trader_usdc_flows` | USDC deposit/withdrawal history with direction filtering | Traders |
 
+### Polymarket REST API Tools (no Graph API key needed)
+
+| Tool | Description | API |
+|------|-------------|-----|
+| `search_markets` | Search markets by text query with filters (active, closed, sort by volume/liquidity) | Gamma |
+| `get_market_info` | Get detailed market metadata by slug or condition ID | Gamma |
+| `list_polymarket_events` | Browse events (groups of related markets) with tag/status filters | Gamma |
+| `get_polymarket_event` | Get a single event with all its associated markets | Gamma |
+| `get_live_prices` | Real-time CLOB prices for outcome tokens (buy/sell, single or batch) | CLOB |
+| `get_live_spread` | Bid-ask spread + midpoint for assessing market liquidity | CLOB |
+| `get_live_orderbook` | Full order book (all resting bids and asks) for a token | CLOB |
+| `get_price_history` | Historical price time-series (1m to max interval, configurable fidelity) | CLOB |
+| `get_last_trade` | Last trade price for an outcome token | CLOB |
+| `get_clob_market` | CLOB market details: token IDs, live prices, min order/tick sizes | CLOB |
+| `search_markets_enriched` | **Power tool**: search + auto-enrich with live CLOB prices AND on-chain resolution status in one call | Gamma + CLOB + Graph |
+
+## Data Sources
+
+### The Graph Subgraphs (requires `GRAPH_API_KEY`)
+
+On-chain indexed data — authoritative for historical analytics, P&L, open interest, and resolution status.
+
 ## Subgraphs
 
 | Name | IPFS Hash | Description |
@@ -159,20 +181,27 @@ A `/health` endpoint is available at `http://localhost:3851/health` when HTTP tr
 
 Once connected, an AI agent can:
 
+### Market Discovery (Gamma API)
+- "Search for prediction markets about AI"
+- "Show me the most active Polymarket events right now"
+- "Find markets about the 2024 election sorted by volume"
+- "What markets are in the 'crypto' category?"
+
+### Live Trading Data (CLOB API)
+- "What's the current price for the Trump YES token?"
+- "Show me the full order book for this market"
+- "What's the bid-ask spread on this token?"
+- "Show me the price history for this market over the last week"
+
+### On-Chain Analytics (The Graph)
 - "What are the current Polymarket global stats?"
 - "Show me the latest 20 orderbook trades"
 - "What are the positions for address 0x...?" *(flags if wallet entered via OB buys only)*
 - "Get the P&L for trader 0x...?"
-- "Query the main subgraph for all conditions with more than 100 trades"
 - "Which markets have the most open interest right now?" *(flags dead-money OI on resolved markets)*
-- "Show me the OI trend for market 0x..."
-- "What's the total open interest across all Polymarket markets?"
 - "Show me disputed markets on Polymarket"
-- "What's the resolution status of market 0x...?"
-- "Show me the full trading history for wallet 0x..." *(includes OB fills + entry type classification)*
-- "Track USDC deposits and withdrawals for trader 0x..."
 - "Who are the top traders?" *(flags any with OB volume not captured by Beefy P&L)*
-- "Show me recent activity for address 0x..." *(unified feed: splits + merges + OB fills)*
+- "Show me the full trading history for wallet 0x..." *(includes OB fills + entry type classification)*
 
 ## Development
 

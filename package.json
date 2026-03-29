@@ -1,6 +1,6 @@
 {
   "name": "graph-polymarket-mcp",
-  "version": "1.6.1",
+  "version": "2.0.0",
   "mcpName": "io.github.PaulieB14/graph-polymarket-mcp",
   "description": "MCP server for querying Polymarket data via The Graph subgraphs — supports stdio and SSE transports",
   "type": "module",
