@@ -1,6 +1,7 @@
 ---
 name: graph-polymarket-mcp
-description: Query Polymarket prediction market data via The Graph subgraphs + Polymarket REST APIs (Gamma + CLOB) — 31 tools for market search, live prices, on-chain analytics, trader P&L, open interest, resolution status, and more.
+version: 2.1.0
+description: Query Polymarket prediction market data via The Graph subgraphs + Polymarket REST APIs (Gamma + CLOB) — 35 tools for market search, live prices, on-chain analytics, trader P&L, open interest, resolution status, and CLOB V2 builder attribution.
 metadata:
   clawdbot:
     emoji: "🔮"
