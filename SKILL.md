@@ -2,14 +2,19 @@
 name: graph-polymarket-mcp
 description: Query Polymarket prediction market data via The Graph subgraphs + Polymarket REST APIs (Gamma + CLOB) — 31 tools for market search, live prices, on-chain analytics, trader P&L, open interest, resolution status, and more.
 metadata:
-  {"openclaw": {"requires": {"bins": ["node"], "env": ["GRAPH_API_KEY"]}, "primaryEnv": "GRAPH_API_KEY", "homepage": "https://github.com/PaulieB14/graph-polymarket-mcp"}}
+  clawdbot:
+    emoji: "🔮"
+    requires:
+      bins: ["node"]
+      env: ["GRAPH_API_KEY"]
+    primaryEnv: "GRAPH_API_KEY"
 ---
 
 # Graph Polymarket MCP
 
 Query Polymarket prediction market data via The Graph subgraphs and Polymarket REST APIs (Gamma + CLOB) — market search, live prices, order books, trader P&L, positions, open interest, resolution status, and trader profiles.
 
-## Tools
+## Try it
 
 ### Polymarket REST API (no API key needed)
 
@@ -48,7 +53,7 @@ Query Polymarket prediction market data via The Graph subgraphs and Polymarket R
 - **get_trader_profile** — Full trader profile: first seen, CTF events, USDC flows
 - **get_trader_usdc_flows** — USDC deposit/withdrawal history with direction filtering
 
-## Requirements
+## 20 tools available
 
 - **Runtime:** Node.js >= 18 (runs via `npx`)
 - **Environment variables:**
@@ -61,7 +66,7 @@ Query Polymarket prediction market data via The Graph subgraphs and Polymarket R
 GRAPH_API_KEY=your-key npx graph-polymarket-mcp
 ```
 
-## Network & Data Behavior
+Get a free API key at [The Graph Studio](https://thegraph.com/studio/) (free tier: 100K queries/month).
 
 - Subgraph tools make GraphQL requests to The Graph Gateway (`gateway.thegraph.com`) using your API key.
 - REST API tools query Polymarket's public endpoints (`gamma-api.polymarket.com` and `clob.polymarket.com`) directly — no authentication needed.
@@ -69,7 +74,9 @@ GRAPH_API_KEY=your-key npx graph-polymarket-mcp
 - No local database or persistent storage is used.
 - The SSE transport (`--http` / `--http-only`) starts a local HTTP server on port 3851 (configurable via `MCP_HTTP_PORT` env var).
 
-## Use Cases
+| Endpoint | Data sent | Purpose |
+|----------|-----------|---------|
+| `gateway.thegraph.com` | GraphQL queries with your API key | Queries 8 Polymarket subgraphs |
 
 - Search and discover prediction markets by topic, category, or keyword
 - Get real-time prices, order books, and spreads for any market
