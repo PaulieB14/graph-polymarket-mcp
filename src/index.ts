@@ -25,7 +25,7 @@ import {
 
 const server = new McpServer({
   name: "graph-polymarket-mcp",
-  version: "2.1.0",
+  version: "2.1.1",
 });
 
 // Helper to format tool responses
