@@ -1,6 +1,6 @@
 ---
 name: graph-polymarket-mcp
-version: 2.1.1
+version: 2.1.2
 description: Query Polymarket prediction market data via The Graph subgraphs + Polymarket REST APIs (Gamma + CLOB) — 35 tools for market search, live prices, on-chain analytics, trader P&L, open interest, resolution status, and CLOB V2 builder attribution.
 metadata:
   clawdbot:
@@ -9,9 +9,30 @@ metadata:
       bins: ["node"]
       env: ["GRAPH_API_KEY"]
     primaryEnv: "GRAPH_API_KEY"
+    # Declared explicitly rather than left implicit: this server reads one env var and
+    # talks to three hosts, and nothing else. Anything outside this list is a bug.
+    capabilities:
+      env:
+        - name: GRAPH_API_KEY
+          purpose: "Authenticates subgraph queries to The Graph gateway. Sent only to gateway.thegraph.com; never logged, never forwarded to Polymarket or any other host."
+          required: false
+      network:
+        - host: gateway.thegraph.com
+          purpose: "Subgraph queries. Receives GRAPH_API_KEY."
+        - host: gamma-api.polymarket.com
+          purpose: "Public market metadata. No credentials sent."
+        - host: clob.polymarket.com
+          purpose: "Public prices and order books. No credentials sent."
+      filesystem: none
+      transports: ["stdio (default)", "sse (opt-in, --http)"]
 ---
 
 # Graph Polymarket MCP
+
+> **Transport note.** The default is **stdio** — no network surface, nothing listening. The
+> optional `--http` SSE transport is **unauthenticated**: anyone who can reach the port can call
+> every tool and spend your `GRAPH_API_KEY` quota. Bind it to localhost and front it with TLS and
+> auth if it must be reachable.
 
 Query Polymarket prediction market data via The Graph subgraphs and Polymarket REST APIs (Gamma + CLOB) — market search, live prices, order books, trader P&L, positions, open interest, resolution status, and trader profiles.
 

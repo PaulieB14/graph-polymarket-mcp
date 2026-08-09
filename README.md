@@ -75,6 +75,13 @@ Use the stdio transport with `npx graph-polymarket-mcp` as the command, passing 
 
 ### OpenClaw / Remote Agents (SSE)
 
+> **The SSE transport has no authentication.** Anyone who can reach the port can call every tool,
+> and those calls spend *your* `GRAPH_API_KEY` quota. `--http` binds `0.0.0.0` inside a container,
+> so publish it to `127.0.0.1` on the host and put a reverse proxy with TLS and auth in front of
+> anything reachable off-box. For local agents, prefer the default stdio transport — it has no
+> network surface at all.
+
+
 Start the server with the HTTP transport:
 
 ```bash
