@@ -33,10 +33,11 @@ export interface SubgraphConfig {
 
 export const SUBGRAPHS: Record<string, SubgraphConfig> = {
   main: {
-    name: "Main",
+    name: "Main (V1, legacy)",
+    era: "v1",
     ipfsHash: "QmdyCguLEisTtQFveEkvMhTH7UzjyhnrF9kpvhYeG4QX8a",
     description:
-      "Core Polymarket subgraph with markets, conditions, and trader counts. Best for: market discovery, condition resolution status, and counting open/closed markets. NOTE: volume/fee fields in Global are zeroed out — use the orderbook subgraph for accurate volume data.",
+      "LEGACY V1 core subgraph (pre-2026-04-28 migration history). Prefer `v2_main` for current data; use this for all-time or pre-migration conditions that v2_main lacks. Best for: market discovery, condition resolution status, and counting open/closed markets. NOTE: volume/fee fields in Global are zeroed out — use the orderbook subgraph for accurate volume data.",
     keyEntities: [
       "Global (numConditions, numOpenConditions, numClosedConditions, numTraders)",
       "Condition (oracle, questionId, outcomeSlotCount, resolutionTimestamp, payoutNumerators)",
@@ -97,6 +98,8 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
     ],
   },
   open_interest: {
+    availability:
+      "NOT SERVED as of 2026-10-15 — the gateway returns 'subgraph not found: no allocations' for QmbT2MmS… (subgraph EvkLMq7ocbxLWCn1wXJoj25wUKwEbKR8Zx2huFzC3n5f). OI tools will error until an indexer allocates.",
     name: "Open Interest",
     ipfsHash: "QmbT2MmS2VGbGihiTUmWk6GMc2QYqoT9ZhiupUicYMWt6H",
     // Already the V2 deployment — this one migrated before the rest and is live at chainhead.
@@ -183,15 +186,13 @@ export const SUBGRAPHS: Record<string, SubgraphConfig> = {
   },
 
   v2_main: {
-    name: "V2 Main (CLOB V2) — SYNCING",
+    name: "V2 Main (CLOB V2)",
     ipfsHash: "QmTKrqyYg23BjhihmsrRjbV9cVS2piNmnHsr7cjYaTgdWu",
     era: "v2",
-    syncWarning:
-      "BEHIND CHAINHEAD. Measured 2026-08-08: head block 86.84M against a Polygon chainhead of 91.67M — roughly three months of lag, closing at about 4 blocks/sec. Do not use it for anything current.",
     description:
-      "Conditions, resolution status and global counters for CLOB **V2**. ⚠️ STILL SYNCING — as of 2026-08-08 its head is ~4.8M blocks (about three months) behind chainhead and catching up slowly. It answers structural questions about conditions that existed before its head block, but **any question about recent markets, current counts, or 'latest' anything will be silently wrong** — it will return data, just old data. Until it catches up, use the V1 `main` subgraph for market discovery and resolution status. Kept in the registry so it can be queried deliberately, not so it can be picked by default.",
+      "PRIMARY subgraph for conditions, resolution status and global counters. Live at Polygon chainhead (verified 2026-10-15, no indexing errors). Best for: market discovery, condition resolution status, counting open/closed markets. It holds ~4.35M conditions versus ~4.98M on the legacy V1 `main` subgraph, so for conditions created before the 2026-04-28 V2 migration that are missing here, fall back to `main`.",
     keyEntities: [
-      "Global (numConditions, numOpenConditions, numClosedConditions, numTraders) — as of the head block, NOT current",
+      "Global (numConditions, numOpenConditions, numClosedConditions, numTraders)",
       "Condition (oracle, questionId, outcomeSlotCount, resolutionTimestamp, payoutNumerators)",
       "Account, MarketData, MarketPosition, MarketProfit, Transaction",
       "Split / Merge / Redemption",

@@ -185,8 +185,7 @@ answerable question — 3,325 builders as of 2026-08-08.
 **Two traps these tools handle for you.** The V2 exchange contracts appear as `Account` rows, because
 the exchange is the `taker` when an order matches the book — ranking accounts naively returns
 `0xe111…996b` (176M fills) and `0xe222…0f59` (41M fills) above every human. `get_v2_top_traders`
-excludes them. And `v2_main` is still syncing, so it answers with stale data rather than erroring;
-`check_subgraph_freshness` tells you how stale before you trust a number.
+excludes them. `check_subgraph_freshness` reports any subgraph's head block before you trust a number.
 
 ## Data Sources
 
@@ -196,26 +195,30 @@ On-chain indexed data — authoritative for historical analytics, P&L, open inte
 
 ## Subgraphs
 
-| Name | IPFS Hash | Description |
-|------|-----------|-------------|
-| Main | `QmdyCguLEisTtQFveEkvMhTH7UzjyhnrF9kpvhYeG4QX8a` | Complete ecosystem data |
-| Beefy P&L | `QmbHwcGkumWdyTK2jYWXV3vX4WyinftEGbuwi7hDkhPWqG` | Comprehensive P&L tracking |
-| Slimmed P&L | `QmZAYiMeZiWC7ZjdWepek7hy1jbcW3ngimBF9ibTiTtwQU` | Minimal position data |
-| Activity | `Qmf3qPUsfQ8et6E3QNBmuXXKqUJi91mo5zbsaTkQrSnMAP` | Position management events |
-| Orderbook | `QmVGA9vvNZtEquVzDpw8wnTFDxVjB6mavTRMTrKuUBhi4t` | Order fill analytics |
-| Open Interest | `QmbT2MmS2VGbGihiTUmWk6GMc2QYqoT9ZhiupUicYMWt6H` | Per-market and global OI with hourly snapshots |
-| Resolution | `QmZnnrHWCB1Mb8dxxXDxfComjNdaGyRC66W8derjn3XDPg` | UMA oracle resolution lifecycle |
-| Traders | `QmfT4YQwFfAi77hrC2JH3JiPF7C4nEn27UQRGNpSpUupqn` | Per-trader event logs and USDC flows |
-
-### CLOB V2 (from block 84902353 — no earlier history)
+### CLOB V2 — primary (from block 84902353)
 
 | Name | IPFS Hash | Status | Description |
 |------|-----------|--------|-------------|
+| V2 Main | `QmTKrqyYg23BjhihmsrRjbV9cVS2piNmnHsr7cjYaTgdWu` | at chainhead | Conditions, resolution status and counters (default for market tools) |
 | V2 Orderbook | `QmNtJGxpAjFgoHhMwdijyvbLrpPPiHHX2qct56nTpk42Bs` | at chainhead | V2 fills with **builder-code attribution** |
 | V2 P&L | `QmT21E4p8r6FCzW2EPK4NVj1dbcggdvKxZr8uuMcB4P5Cu` | at chainhead | Cost basis and realized P&L from V2 fills only |
-| V2 Main | `QmTKrqyYg23BjhihmsrRjbV9cVS2piNmnHsr7cjYaTgdWu` | ⚠️ **syncing** | Conditions and counters — ~86 days behind as of 2026-08-08 |
+| Open Interest V2 | `QmbT2MmS2VGbGihiTUmWk6GMc2QYqoT9ZhiupUicYMWt6H` | ⚠️ no indexer allocated (2026-10-15) | Per-market and global OI with hourly snapshots |
 
-Open Interest (above) is already a V2 deployment; it reads ConditionalTokens, which V2 left
+Status verified via `_meta` on 2026-10-15.
+
+### V1 — legacy (pre-2026-04-28 migration history)
+
+| Name | IPFS Hash | Description |
+|------|-----------|-------------|
+| Main (legacy) | `QmdyCguLEisTtQFveEkvMhTH7UzjyhnrF9kpvhYeG4QX8a` | All-time conditions incl. pre-migration; pass `subgraph: "main"` |
+| Beefy P&L | `QmbHwcGkumWdyTK2jYWXV3vX4WyinftEGbuwi7hDkhPWqG` | Comprehensive P&L tracking |
+| Slimmed P&L | `QmZAYiMeZiWC7ZjdWepek7hy1jbcW3ngimBF9ibTiTtwQU` | Minimal position data |
+| Activity | `Qmf3qPUsfQ8et6E3QNBmuXXKqUJi91mo5zbsaTkQrSnMAP` | Position management events |
+| Orderbook | `QmVGA9vvNZtEquVzDpw8wnTFDxVjB6mavTRMTrKuUBhi4t` | Order fill analytics (all-time volume) |
+| Resolution | `QmZnnrHWCB1Mb8dxxXDxfComjNdaGyRC66W8derjn3XDPg` | UMA oracle resolution lifecycle |
+| Traders | `QmfT4YQwFfAi77hrC2JH3JiPF7C4nEn27UQRGNpSpUupqn` | Per-trader event logs and USDC flows |
+
+Open Interest is already a V2 deployment; it reads ConditionalTokens, which V2 left
 unchanged, so it has no migration discontinuity.
 
 Which era to ask: **all-time or pre-2026-04-28 → V1.** Post-migration activity, or anything about
