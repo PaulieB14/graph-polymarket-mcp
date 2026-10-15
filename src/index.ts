@@ -67,7 +67,7 @@ server.registerTool(
     return textResult({
       subgraphs: list,
       choosing:
-        "V1 and V2 are different eras, not old and new. Polymarket migrated to V2 exchange " +
+        "V2 is primary: prefer v2_* subgraphs for current data. V1 entries are legacy, kept for pre-migration history. Polymarket migrated to V2 exchange " +
         "contracts on 2026-04-28; the v2_* subgraphs start at block 84902353 and hold NO earlier " +
         "history. All-time or pre-migration questions belong on the V1 entries. Builder-code " +
         "attribution exists only on v2_orderbook. Any entry carrying a syncWarning is behind " +
@@ -148,14 +148,15 @@ server.registerTool(
 server.registerTool(
   "get_market_data",
   {
-    description: "Get Polymarket market/condition data including outcomes and volumes from the Main subgraph",
+    description: "Get Polymarket market/condition data including outcomes. Defaults to the V2 Main subgraph; pass subgraph: \"main\" for legacy V1 / pre-2026-04-28 history.",
     inputSchema: {
+      subgraph: z.enum(["v2_main", "main"]).default("v2_main").describe("v2_main (default, current) or main (legacy V1, pre-migration history)"),
       first: z.number().min(1).max(100).default(10).describe("Number of markets to return (1-100)"),
       orderBy: z.string().default("id").describe("Field to order by"),
       orderDirection: z.enum(["asc", "desc"]).default("desc").describe("Sort direction"),
     },
   },
-  async ({ first, orderBy, orderDirection }) => {
+  async ({ subgraph, first, orderBy, orderDirection }) => {
     try {
       const query = `{
         conditions(first: ${first}, orderBy: ${orderBy}, orderDirection: ${orderDirection}) {
@@ -168,7 +169,7 @@ server.registerTool(
           payoutDenominator
         }
       }`;
-      const data = await querySubgraph(SUBGRAPHS.main.ipfsHash, query);
+      const data = await querySubgraph(SUBGRAPHS[subgraph].ipfsHash, query);
       return textResult(data);
     } catch (error) {
       return errorResult(error);
@@ -632,10 +633,13 @@ server.registerTool(
       // Cross-ref Main subgraph: payoutDenominator > 0 means market is resolved
       const resolutionMap = new Map<string, boolean>();
       if (conditionIds.length > 0) {
-        const ids = conditionIds.map((id) => `"${id}"`).join(", ");
-        const mainQuery = `{ conditions(where: { id_in: [${ids}] }) { id payoutDenominator } }`;
-        const mainData = await querySubgraph(SUBGRAPHS.main.ipfsHash, mainQuery).catch(() => null);
-        if (mainData) {
+        // V2 main first; fall back to legacy V1 main for pre-migration conditions it lacks.
+        for (const key of ["v2_main", "main"]) {
+          const missing = conditionIds.filter((id) => !resolutionMap.has(id));
+          if (missing.length === 0) break;
+          const q = `{ conditions(where: { id_in: [${missing.map((id) => `"${id}"`).join(", ")}] }) { id payoutDenominator } }`;
+          const mainData = await querySubgraph(SUBGRAPHS[key].ipfsHash, q).catch(() => null);
+          if (!mainData) continue;
           const md = mainData as { conditions?: Array<{ id: string; payoutDenominator: string }> };
           for (const c of md.conditions ?? []) {
             resolutionMap.set(c.id, parseInt(c.payoutDenominator || "0") > 0);
